@@ -1,0 +1,12 @@
+Package: com.iosdump.sfsymbolreplacer
+Name: SF 图标替换
+Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 14.0), preferenceloader
+Conflicts: com.zxms.sfsymbolreplacer
+Replaces: com.zxms.sfsymbolreplacer
+Provides: com.zxms.sfsymbolreplacer
+Version: 1.0.9
+Architecture: iphoneos-arm
+Description: 替换系统 SF 图标。
+Maintainer: iosdump
+Author: iosdump
+Section: Tweaks

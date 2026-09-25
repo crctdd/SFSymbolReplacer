@@ -1,0 +1,6 @@
+#!/bin/sh
+D="@PREFIX@/var/mobile/Library/SFSymbolReplacer"
+mkdir -p "$D/Replacements"
+chown -R 501:501 "$D" 2>/dev/null || chown -R mobile:mobile "$D" 2>/dev/null
+chmod 0755 "$D" "$D/Replacements"
+exit 0
