@@ -55,7 +55,8 @@ jobs:
       - name: Install iOS 14.5 SDK
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: "$THEOS/bin/install-sdk" iPhoneOS14.5
+        run: |
+          "$THEOS/bin/install-sdk" iPhoneOS14.5
 
       - name: Build ${{ matrix.variant }} package
         env:
