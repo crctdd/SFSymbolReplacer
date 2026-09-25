@@ -1,0 +1,116 @@
+name: Build packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  THEOS: ${{ github.workspace }}/_theos
+
+jobs:
+  build:
+    name: Build ${{ matrix.variant }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: rootful
+            package_scheme: ""
+          - variant: rootless
+            package_scheme: rootless
+          - variant: roothide
+            package_scheme: roothide
+
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+
+      - name: Check out RootHide Theos
+        uses: actions/checkout@v4
+        with:
+          repository: roothide/theos
+          path: _theos
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install build dependencies
+        run: brew install ldid-procursus xz
+
+      - name: Install iOS 14.5 SDK
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: "$THEOS/bin/install-sdk" iPhoneOS14.5
+
+      - name: Build ${{ matrix.variant }} package
+        env:
+          PACKAGE_SCHEME: ${{ matrix.package_scheme }}
+        run: |
+          set -euo pipefail
+          make clean
+          if [[ -n "$PACKAGE_SCHEME" ]]; then
+            make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME="$PACKAGE_SCHEME"
+          else
+            make package FINALPACKAGE=1
+          fi
+
+      - name: Verify package output
+        run: |
+          set -euo pipefail
+          package_count="$(find packages -maxdepth 1 -type f -name '*.deb' | wc -l | tr -d ' ')"
+          if [[ "$package_count" -ne 1 ]]; then
+            echo "Expected exactly one .deb, found $package_count"
+            find packages -maxdepth 1 -type f -print || true
+            exit 1
+          fi
+          ls -lh packages/*.deb
+
+      - name: Upload ${{ matrix.variant }} package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SFSymbolReplacer-${{ matrix.variant }}
+          path: packages/*.deb
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  bundle:
+    name: Bundle all packages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: SFSymbolReplacer-*
+          path: packages
+          merge-multiple: true
+
+      - name: List bundled packages
+        run: ls -lh packages/*.deb
+
+      - name: Upload complete package set
+        uses: actions/upload-artifact@v4
+        with:
+          name: SFSymbolReplacer-all
+          path: packages/*.deb
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
